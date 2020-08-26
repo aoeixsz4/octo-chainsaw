@@ -1,0 +1,302 @@
+variant: fcos
+version: 1.1.0
+passwd:
+  groups:
+    - name: znc
+      gid: 777
+      system: true
+  users:
+    - name: core
+      ssh_authorized_keys:
+        - $pubkey
+    - name: znc
+      uid: 777
+      no_create_home: true
+      shell: /usr/bin/nologin
+      home_dir: /var/lib/znc
+      system: true
+systemd:
+  units:
+    - name: serial-getty@ttyS0.service
+      dropins:
+      - name: autologin-core.conf
+        contents: |
+          [Service]
+          # Override Execstart in main unit
+          ExecStart=
+          # Add new Execstart with `-` prefix to ignore failure
+          ExecStart=-/usr/sbin/agetty --autologin core --noclear %I $TERM
+          TTYVTDisallocate=no
+    - name: failure.service
+      enabled: true
+      contents: |
+        [Service]
+        Type=oneshot
+        ExecStart=/usr/bin/false
+        RemainAfterExit=yes
+        [Install]
+        WantedBy=multi-user.target
+    - name: issuegen-public-ipv4.service
+      enabled: true
+      contents: |
+        [Unit]
+        Before=console-login-helper-messages-issuegen.service
+        After=network-online.target
+        ConditionPathExists=!/var/lib/issuegen-public-ipv4
+
+        [Service]
+        Type=oneshot
+        ExecStart=/usr/local/bin/public-ipv4.sh
+        ExecStartPost=/usr/bin/touch /var/lib/issuegen-public-ipv4
+        RemainAfterExit=yes
+
+        [Install]
+        WantedBy=console-login-helper-messages-issuegen.service
+    - name: http-sigs.service
+      enabled: true
+        [Unit]
+        Before=znc.service
+        After=network-online.target
+        Wants=network-online.target
+
+        [Service]
+        ExecStart=/usr/local/bin/http-sigs.sh
+        ExecStop=killall http-sigs.sh
+
+        [Install]
+        WantedBy=multi-user.target
+    - name: znc.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=ZNC IRC bouncer daemon
+        After=network-online.target
+        Wants=network-online.target
+
+        [Service]
+        User=znc
+        ExecStartPre=-/bin/podman kill znc
+        ExecStartPre=-/bin/podman rm znc
+        ExecStartPre=/bin/podman pull --tls-verify=false seadog:5000/znc
+        ExecStart=/bin/podman run --name znc --net=host --rm \
+          --volume znc-data:/var/lib/znc --user znc:znc --publish 7777 \
+          /usr/bin/znc --follow --makepem --makepass
+        ExecStop=/bin/podman stop znc
+
+        [Install]
+        WantedBy=multi-user.target
+storage:
+  directories:
+    - path: /var/lib/znc
+      mode: 0700
+      user:
+        id: 777
+      group:
+        id: 777
+    - path: /var/lib/znc/.znc
+      mode: 0700
+      user:
+        id: 777
+      group:
+        id: 777
+    - path: /var/lib/znc/.znc/configs
+      mode: 0700
+      user:
+        id: 777
+      group:
+        id: 777
+  files:
+    - path: /etc/hostname
+      mode: 0644
+      contents:
+        inline: |
+          sleepysapphic
+    - path: /etc/profile.d/systemd-pager.sh
+      mode: 0644
+      contents:
+        inline: |
+          # Tell systemd to not use a pager when printing information
+          export SYSTEMD_PAGER=cat
+    - path: /etc/sysctl.d/20-silence-audit.conf
+      mode: 0644
+      contents:
+        inline: |
+          # Raise console message logging level from DEBUG (7) to WARNING (4)
+          # to hide audit messages from the interactive console
+          kernel.printk=4
+    - path: /usr/local/bin/public-ipv4.sh
+      mode: 0755
+      contents:
+        inline: |
+          #!/bin/bash
+          ipv4=$(curl https://ipv4.icanhazip.com)
+          long_host=$(getent hosts $ipv4)
+          host=$(cat /etc/hostname)
+          domain=bc.googleusercontent.com
+          cat >/etc/hosts <<-EOF-
+          127.0.0.1 localhost
+          ::1 localhost
+          $ipv4 $host ${host}.${domain} $long_host
+          10.156.0.20 seadog.${domain} seadog
+          -EOF-
+	- path: /var/lib/znc/.znc/configs/znc.conf
+	  mode: 0600
+      contents:
+        inline: |
+          Version = 1.8.1
+          <Listener l>
+            Port = 7777
+            IPv4 = true
+            IPv6 = true
+            SSL = true
+          </Listener>
+
+          <User aoei>
+            Admin      = true
+            Nick       = aoei
+            AltNick    = aoei_
+            Ident      = aoei
+            RealName   = Joanna Doyle [https://github.com/aoeixsz4]
+            BindHost   = sleepysapphic
+            LoadModule = chansaver
+            LoadModule = controlpanel
+            LoadModule = simple_away
+            LoadModule = sasl
+            <Network freenode>
+              Server = chat.freenode.net +6697
+              <Chan ##nethack-discord>
+              </Chan>
+              <Chan ##nethack-variants>
+              </Chan>
+              <Chan ##rust>
+              </Chan>
+              <Chan #ascension.run>
+              </Chan>
+              <Chan #em.slashem.me>
+              </Chan>
+              <Chan #fedora-coreos>
+              </Chan>
+              <Chan #fedora-meeting-1>
+              </Chan>
+              <Chan #hardfought>
+              </Chan>
+              <Chan #NetHack>
+              </Chan>
+              <Chan #nhs-dev>
+              </Chan>
+              <Chan #teamsplat>
+              </Chan>
+            </Network>
+            <Network slashnet>
+              Server = irc.slashnet.org +6697
+              <Chan #sex>
+              </Chan>
+              <Chan #xkcd-trans>
+              </Chan>
+            </Network>
+          </User>
+    - path: /var/lib/containers/gpg-key.pub
+      mode: 0644
+      contents:
+        inline: |
+          -----BEGIN PGP PUBLIC KEY BLOCK-----
+
+          mQENBFrXj3sBCADmdrAW4GdcRPwbKSeD8eNKbIrzJjmG3SkXJ6PTA93qc64CxgQJ
+          +Gzvy7maLW5oGyZgDiTr5NuecwvMVVvKrB9ty48vNtnKW0tRm85gqiGye5ZBA5fV
+          Y9GPXkFtHkwHARI5XBFn5OYysfcQoyvbe3SGifjOHaZIpfGZP8439xhIHeXgjwzi
+          AiUAZqtd8kmRha+ctDQMBkATZD8RtBiSZKt7OYCGaRiTPFWgXfJgn43P/SAzSGU0
+          KyjExdYxmJydhS7YudPeuun6c/lE7Y16h5gaqQ5hAPJq6x0sZS+t/cP2oxau5Okm
+          s0c39DCiofbUj18BwEWdHz2apalxwPafO8QlABEBAAG0H0pvaG4gRG95bGUgPGpq
+          YWRveWxlQGdtYWlsLmNvbT6JAU4EEwEIADgWIQTWUu7KFwwedqNesoRVJIIxWN5O
+          lgUCWtePewIbAwULCQgHAgYVCgkICwIEFgIDAQIeAQIXgAAKCRBVJIIxWN5Olkxg
+          B/9IZgp9CUEVkGAf7wefclurYGDl0cR7qXxhZXQ2z0ZZeR4eZE0bVwx5PQdvZc+A
+          fQSES/ztgjlV7pQ3DZAZgxmgofEDiZiCRZ7wfW1Ph0J6Cw/OeBi9S6jCwvEkwBIA
+          cF9f8dnfaPpMllzUfnN+H4I8tQWktVD7sv62pHR05Ixl7RJ/gmGoKRLwpV1kc+07
+          CVsXsX6pM8djznH32pILWySqHoErGe0GvDE1Fj6PnLbvoXq0Gl9u6K0JzZsMl2Vu
+          j4P5GWU5hbKONT9EHqeJyqm4S3FwL4vPLxv6CaR0nB2LdW+3f2THvXqX9B5yn1N+
+          So0szUaRBduO8cjUZ8iBtTmVuQENBFrXj3sBCAC3OmXlz5+A84sWaEqG+0W3Zf88
+          bxZhD+Nh/OBUfPYr9aW6Xwd8C7PNhR91yInM6Qsi6d6TPBWkMES/R2K9ovZgCxtM
+          PD+otVMTzjDtztdzz0KcaZCfm+qweNHyvllcFYPYgU740aTXLgJPcrUsajVYfWLX
+          nxQBorYVtLrmVCVDDpq1mhl8jPFydpyjzEBwedaTXRfjTzU5YOxKaIyBrTEAHbDc
+          +1Z+rALfUUkUzBgpq7t7CxdPd7ESfEmbdmbuxhhLeHEWx3yQIwN6f9gnOHbELNx7
+          bkQb8/jXKTUf/BcLQuM/yKMlxviZLhZ4xCh+FxnjIfkZ1vBUpOSPIcKkH1OtABEB
+          AAGJATYEGAEIACAWIQTWUu7KFwwedqNesoRVJIIxWN5OlgUCWtePewIbDAAKCRBV
+          JIIxWN5OllMyB/9YC01hLPwIy/MvTwEIczWwXSGcz62oyP6ybQAF1QXO6U0JAoZH
+          ERISseNj3WiHYbsyB9mTRdE5QADQml+qoYVJfvhq5PR/y1mXnEgsypkLB15pkToZ
+          F2FeMyFaubmbADe03cV3tUJgp3UBmMceWksMJj2p/LVTcX2RqvKDtMONbWlvNjkx
+          4remhheG+ouJf7cN5KHlcFsmHNs2U2XAuwpHWIkPBEp2wyjquqCq+fiyTcK+cCEu
+          7o+WjuRk+gdeiVb53yb55TRALLUReyZC52MjDwJaZQVY7HmLXQoM9usNLlj3DRAR
+          nbQoLhvdlljr50eFuXhbuBOQ86cmeUxF+pO/mQENBF85m9MBCADRLqUAvFpJVkXm
+          fQyVgbAnERy5Eqt2PmfusRM1hI9NAYJPnAizzkZG7t0WvDRbPNvCFNNDXuUhfIy3
+          Y/d1OJEolBxm8OoNjj7IQGrHx5ndSSr7rTrQR1MruHjKLH3aTQj729LnEFc7Wavl
+          Q2fPedNmZ5gIC85tvivREF6RiMEU6wsIhgXDNsMe76F6xugnvhj8QGBqMC0bG43L
+          6RbeU9Fcq1c/rV5T40G1smdQADuz80DnlyeDp1YcGeuCE+KVnhBhmsOohsq/7FLu
+          Qd9oIZMk1DDR8o+Pi6ANotQtnOvS76rr8vgzELWc1UNgMRw8eHCR3rlJoA6OnQ8q
+          bc2TcElpABEBAAG0MEpvYW5uYSBKYW5ldCBaYWl0c2V2YS1Eb3lsZSA8amphZG95
+          bGVAZ21haWwuY29tPokBVAQTAQgAPhYhBGSQJmU8kIEqKU6vmsAU5OzJ7EMvBQJf
+          OZvTAhsDBQkDwmcABQsJCAcCBhUKCQgLAgQWAgMBAh4BAheAAAoJEMAU5OzJ7EMv
+          1PoH/2F70lLfVlmFnKYKmS1vh+ZcY7enOfpMMiV62b9Fy8Wvq/kBJIcZmNzTnDgK
+          /rXUOYR0jmPTAj2rGCXR3UP/8LZV+Vrls+Sazl/DT8LKjwYSaUiXgGLtLQLYkqnN
+          uI8SWHHMUStGKDbkbzdn7ULF9M4pEd8q5H5vgT2ObTbDGnUlYWl22zak9URPhFN6
+          wRUp7SvwHyyBi/MwveMaD3RuJohn1MUYqICsQb+xex3zPTJ8Xi0kVvaEJ98Diuyq
+          dgoAZLMksRdrAM4V6r73hSMJA2Xa8ikohBBnvdN0AfPkcU3qRZ4f1Ka25f1m9iDM
+          Ohc0pYgW0jAn43R7RPLI8amkmQq5AQ0EXzmb0wEIAM4V9zBccxjo6gAQZns0WgFF
+          Au2Gg/4wBmit05RnvrW2mx47hGTZOHCAwEkoI946HaVWiAd0E5WqLFVoLJAuMRTW
+          64BK2rpokzjEJs3JypU8mm6YbtkqkJAoqpNzyNB8JrJJiapA6bs9X5bmfSe+Uk/q
+          ElHA2OHUdvVOwDeRKZDyBsym1m+7BuU+EyNKIEKZfHfNi8mLANxBX18bsIOQouSY
+          TVrFLs94cBJC2vdAN6WMF7gCZ3zQIfha9D7nSnIbuuMiIYhrCw4yC1f/6YO0ULtg
+          AV7VzqN2NMJgzbgBDAwFQ6AyQfBOOsIWi7Qvt/pgTbq946GyNfQ+c0ecY/XiVEEA
+          EQEAAYkBPAQYAQgAJhYhBGSQJmU8kIEqKU6vmsAU5OzJ7EMvBQJfOZvTAhsMBQkD
+          wmcAAAoJEMAU5OzJ7EMvEaYIAIBa+ML03x3jfntlZAvMnIFPCnnSr4ohoV1k8P1u
+          VPxzpLSReLSCn7hHec9G/arb3h/RV3rvm5OZ1mKSsmodWkNkVra/ArYIIbd5e7TP
+          PCEpLEx9VTlvxvUVXCnZVpkx+ir8ykaTxvY01oRHUWVX1YXsIqe9zmsylM/4W0dn
+          Cx0lVYkmhT/DB2Z95wY9ojL5EUnotwWfsqXSnLm5wzoYrTZcUvQzCw9qGmd4bwzC
+          7ObRdgbzpHYVgKUeXi86/8uDbz56Nn1MBTrQgkH+r8CJJeNGd70obWleft02eQHS
+          /a0NMy+wxpEqnfjpwvuF7tvxsOtVZPncVtjzCoUH7lKMjCg=
+          =/gdd
+          -----END PGP PUBLIC KEY BLOCK-----      
+    - path: /etc/containers/registries/20-local-sigserv.yaml
+      mode: 0644
+      contents:
+        inline: |
+          neighbour:
+            sigstore: http://localhost:8000
+            sigstore-staging: file:///var/lib/znc/sigstore
+    - path: /usr/local/bin/http-sigs.sh
+      mode: 0755
+      contents:
+        inline: |
+          #!/bin/bash
+          cd /var/lib/containers/sigstore
+          python3 -m http.service
+    - path: /etc/subuid
+      mode: 0644
+      contents:
+        inline: |
+          znc:100000:65536
+    - path: /etc/subgid
+      mode: 0644
+      contents:
+        inline: |
+          znc:100000:65536
+    - path: /usr/local/bin/http-sigs.sh
+      mode: 0755
+      contents:
+        inline: |
+          {
+            "default": [ {"type": "insecureAcceptAnything"} ],
+            "transports":
+            {
+              "docker-daemon":
+              { "": [{"type":"insecureAcceptAnything"}] },
+              "neighbour":
+              {
+                "seadog:5000": [
+                  {
+                    "type": "signedBy",
+                    "keyType": "GPGKeys",
+                    "keyPath": "/var/lib/containers/gpg-key.pub"
+                  } ]
+              }
+            }
+          }

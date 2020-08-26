@@ -1,0 +1,15 @@
+{
+  "ignition": {
+    "version": "3.1.0"
+  },
+  "passwd": {
+    "users": [
+      {
+        "name": "core",
+        "sshAuthorizedKeys": [
+          "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDD1boyNeRqsAttjgkCmIgu87YpuYG/sr0CLoVq4Ou4gK4P/jZFCiHFZdz+RE+0ZjqRdSrcLIz8MZZre6DvPLNSyvX30duSv4rXWd+9IRRWrDbneJ3jbQbLUnM8gZclSVCYc55r/rSjM3M4IlET1x4+rZ1+ochpLT9emA9AtFUgUxxBG3ee43O07uGwUHigUOb1AiXqnaYdo9vqte1U4IUwiZIVseTszmyDaP4Uz/VCw6Vl9+OaZPvZvE6/hBwWOrv8sklBYdqZUJSI3zpy4ZvHnW7wVqqMRUh1hpf1+NVNyUDtdYzxKuOxs2sjUC+nc6qOcnythKnbcHbgbA6y8mFEp+JkfrGBx4PcnrFpOSGLeiSQiEM51yOJ+qocWA2OxO7pA+o1AGm+WjURl1Ni2THMtpzahcECJXzi9+jibSt9cJEr8oxjVfG59+/E8q9zJHdN4eqrfpanyL0fofi1kfZUPkG+LelRxfUZSbEtM5pL+Rk1g+aAaFlAdhDyNQvg8zM= aoei@djanseriy"
+        ]
+      }
+    ]
+  }
+}
