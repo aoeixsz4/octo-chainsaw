@@ -14,3 +14,7 @@ alias fcct='podman run --rm --tty --interactive \
             --security-opt label=disable        \
             --volume ${PWD}:/pwd --workdir /pwd \
             quay.io/coreos/fcct:release'
+
+export VMNAME='sleepysapphic'
+export YAML='fcct-containers.yaml'
+alias fc2ign="fcct --pretty --strict $YAML --output ${VMNAME}.ign"
