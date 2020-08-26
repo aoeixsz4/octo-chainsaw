@@ -1,2 +1,3 @@
+ARG POD znc
 FROM registry.fedoraproject.org/fedora:latest
-RUN dnf install znc -y
+RUN dnf install ${POD} -y

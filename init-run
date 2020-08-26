@@ -1,0 +1,4 @@
+#!/bin/zsh
+./configure $1 # if its empty it won't do anything anyway
+./build-znc
+./run

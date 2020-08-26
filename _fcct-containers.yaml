@@ -4,7 +4,7 @@ passwd:
   users:
     - name: core
       ssh_authorized_keys:
-        - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDD1boyNeRqsAttjgkCmIgu87YpuYG/sr0CLoVq4Ou4gK4P/jZFCiHFZdz+RE+0ZjqRdSrcLIz8MZZre6DvPLNSyvX30duSv4rXWd+9IRRWrDbneJ3jbQbLUnM8gZclSVCYc55r/rSjM3M4IlET1x4+rZ1+ochpLT9emA9AtFUgUxxBG3ee43O07uGwUHigUOb1AiXqnaYdo9vqte1U4IUwiZIVseTszmyDaP4Uz/VCw6Vl9+OaZPvZvE6/hBwWOrv8sklBYdqZUJSI3zpy4ZvHnW7wVqqMRUh1hpf1+NVNyUDtdYzxKuOxs2sjUC+nc6qOcnythKnbcHbgbA6y8mFEp+JkfrGBx4PcnrFpOSGLeiSQiEM51yOJ+qocWA2OxO7pA+o1AGm+WjURl1Ni2THMtpzahcECJXzi9+jibSt9cJEr8oxjVfG59+/E8q9zJHdN4eqrfpanyL0fofi1kfZUPkG+LelRxfUZSbEtM5pL+Rk1g+aAaFlAdhDyNQvg8zM= aoei@djanseriy
+        - ${SSH_KEY}
       groups: [ sudo, docker ]
     - name: znc
       uid: 777
@@ -106,7 +106,7 @@ storage:
       mode: 0644
       contents:
         inline: |
-          sleepysapphic
+          ${VM_NAME}
     - path: /etc/profile.d/systemd-pager.sh
       mode: 0644
       contents:
@@ -133,7 +133,7 @@ storage:
           127.0.0.1 localhost
           ::1 localhost
           $ipv4 $host ${host}.${domain} $long_host
-          10.156.0.20 seadog.${domain} seadog
+          ${REG_IP} ${REG_HOST}.${domain} ${REG_HOST}
           EOF
     - path: /var/lib/znc/.znc/configs/znc.conf
       mode: 0600
@@ -153,7 +153,7 @@ storage:
             AltNick    = aoei_
             Ident      = aoei
             RealName   = Joanna Doyle [https://github.com/aoeixsz4]
-            BindHost   = sleepysapphic
+            BindHost   = ${VM_NAME}
             LoadModule = chansaver
             LoadModule = controlpanel
             LoadModule = simple_away
@@ -195,62 +195,7 @@ storage:
       mode: 0644
       contents:
         inline: |
-          -----BEGIN PGP PUBLIC KEY BLOCK-----
-
-          mQENBFrXj3sBCADmdrAW4GdcRPwbKSeD8eNKbIrzJjmG3SkXJ6PTA93qc64CxgQJ
-          +Gzvy7maLW5oGyZgDiTr5NuecwvMVVvKrB9ty48vNtnKW0tRm85gqiGye5ZBA5fV
-          Y9GPXkFtHkwHARI5XBFn5OYysfcQoyvbe3SGifjOHaZIpfGZP8439xhIHeXgjwzi
-          AiUAZqtd8kmRha+ctDQMBkATZD8RtBiSZKt7OYCGaRiTPFWgXfJgn43P/SAzSGU0
-          KyjExdYxmJydhS7YudPeuun6c/lE7Y16h5gaqQ5hAPJq6x0sZS+t/cP2oxau5Okm
-          s0c39DCiofbUj18BwEWdHz2apalxwPafO8QlABEBAAG0H0pvaG4gRG95bGUgPGpq
-          YWRveWxlQGdtYWlsLmNvbT6JAU4EEwEIADgWIQTWUu7KFwwedqNesoRVJIIxWN5O
-          lgUCWtePewIbAwULCQgHAgYVCgkICwIEFgIDAQIeAQIXgAAKCRBVJIIxWN5Olkxg
-          B/9IZgp9CUEVkGAf7wefclurYGDl0cR7qXxhZXQ2z0ZZeR4eZE0bVwx5PQdvZc+A
-          fQSES/ztgjlV7pQ3DZAZgxmgofEDiZiCRZ7wfW1Ph0J6Cw/OeBi9S6jCwvEkwBIA
-          cF9f8dnfaPpMllzUfnN+H4I8tQWktVD7sv62pHR05Ixl7RJ/gmGoKRLwpV1kc+07
-          CVsXsX6pM8djznH32pILWySqHoErGe0GvDE1Fj6PnLbvoXq0Gl9u6K0JzZsMl2Vu
-          j4P5GWU5hbKONT9EHqeJyqm4S3FwL4vPLxv6CaR0nB2LdW+3f2THvXqX9B5yn1N+
-          So0szUaRBduO8cjUZ8iBtTmVuQENBFrXj3sBCAC3OmXlz5+A84sWaEqG+0W3Zf88
-          bxZhD+Nh/OBUfPYr9aW6Xwd8C7PNhR91yInM6Qsi6d6TPBWkMES/R2K9ovZgCxtM
-          PD+otVMTzjDtztdzz0KcaZCfm+qweNHyvllcFYPYgU740aTXLgJPcrUsajVYfWLX
-          nxQBorYVtLrmVCVDDpq1mhl8jPFydpyjzEBwedaTXRfjTzU5YOxKaIyBrTEAHbDc
-          +1Z+rALfUUkUzBgpq7t7CxdPd7ESfEmbdmbuxhhLeHEWx3yQIwN6f9gnOHbELNx7
-          bkQb8/jXKTUf/BcLQuM/yKMlxviZLhZ4xCh+FxnjIfkZ1vBUpOSPIcKkH1OtABEB
-          AAGJATYEGAEIACAWIQTWUu7KFwwedqNesoRVJIIxWN5OlgUCWtePewIbDAAKCRBV
-          JIIxWN5OllMyB/9YC01hLPwIy/MvTwEIczWwXSGcz62oyP6ybQAF1QXO6U0JAoZH
-          ERISseNj3WiHYbsyB9mTRdE5QADQml+qoYVJfvhq5PR/y1mXnEgsypkLB15pkToZ
-          F2FeMyFaubmbADe03cV3tUJgp3UBmMceWksMJj2p/LVTcX2RqvKDtMONbWlvNjkx
-          4remhheG+ouJf7cN5KHlcFsmHNs2U2XAuwpHWIkPBEp2wyjquqCq+fiyTcK+cCEu
-          7o+WjuRk+gdeiVb53yb55TRALLUReyZC52MjDwJaZQVY7HmLXQoM9usNLlj3DRAR
-          nbQoLhvdlljr50eFuXhbuBOQ86cmeUxF+pO/mQENBF85m9MBCADRLqUAvFpJVkXm
-          fQyVgbAnERy5Eqt2PmfusRM1hI9NAYJPnAizzkZG7t0WvDRbPNvCFNNDXuUhfIy3
-          Y/d1OJEolBxm8OoNjj7IQGrHx5ndSSr7rTrQR1MruHjKLH3aTQj729LnEFc7Wavl
-          Q2fPedNmZ5gIC85tvivREF6RiMEU6wsIhgXDNsMe76F6xugnvhj8QGBqMC0bG43L
-          6RbeU9Fcq1c/rV5T40G1smdQADuz80DnlyeDp1YcGeuCE+KVnhBhmsOohsq/7FLu
-          Qd9oIZMk1DDR8o+Pi6ANotQtnOvS76rr8vgzELWc1UNgMRw8eHCR3rlJoA6OnQ8q
-          bc2TcElpABEBAAG0MEpvYW5uYSBKYW5ldCBaYWl0c2V2YS1Eb3lsZSA8amphZG95
-          bGVAZ21haWwuY29tPokBVAQTAQgAPhYhBGSQJmU8kIEqKU6vmsAU5OzJ7EMvBQJf
-          OZvTAhsDBQkDwmcABQsJCAcCBhUKCQgLAgQWAgMBAh4BAheAAAoJEMAU5OzJ7EMv
-          1PoH/2F70lLfVlmFnKYKmS1vh+ZcY7enOfpMMiV62b9Fy8Wvq/kBJIcZmNzTnDgK
-          /rXUOYR0jmPTAj2rGCXR3UP/8LZV+Vrls+Sazl/DT8LKjwYSaUiXgGLtLQLYkqnN
-          uI8SWHHMUStGKDbkbzdn7ULF9M4pEd8q5H5vgT2ObTbDGnUlYWl22zak9URPhFN6
-          wRUp7SvwHyyBi/MwveMaD3RuJohn1MUYqICsQb+xex3zPTJ8Xi0kVvaEJ98Diuyq
-          dgoAZLMksRdrAM4V6r73hSMJA2Xa8ikohBBnvdN0AfPkcU3qRZ4f1Ka25f1m9iDM
-          Ohc0pYgW0jAn43R7RPLI8amkmQq5AQ0EXzmb0wEIAM4V9zBccxjo6gAQZns0WgFF
-          Au2Gg/4wBmit05RnvrW2mx47hGTZOHCAwEkoI946HaVWiAd0E5WqLFVoLJAuMRTW
-          64BK2rpokzjEJs3JypU8mm6YbtkqkJAoqpNzyNB8JrJJiapA6bs9X5bmfSe+Uk/q
-          ElHA2OHUdvVOwDeRKZDyBsym1m+7BuU+EyNKIEKZfHfNi8mLANxBX18bsIOQouSY
-          TVrFLs94cBJC2vdAN6WMF7gCZ3zQIfha9D7nSnIbuuMiIYhrCw4yC1f/6YO0ULtg
-          AV7VzqN2NMJgzbgBDAwFQ6AyQfBOOsIWi7Qvt/pgTbq946GyNfQ+c0ecY/XiVEEA
-          EQEAAYkBPAQYAQgAJhYhBGSQJmU8kIEqKU6vmsAU5OzJ7EMvBQJfOZvTAhsMBQkD
-          wmcAAAoJEMAU5OzJ7EMvEaYIAIBa+ML03x3jfntlZAvMnIFPCnnSr4ohoV1k8P1u
-          VPxzpLSReLSCn7hHec9G/arb3h/RV3rvm5OZ1mKSsmodWkNkVra/ArYIIbd5e7TP
-          PCEpLEx9VTlvxvUVXCnZVpkx+ir8ykaTxvY01oRHUWVX1YXsIqe9zmsylM/4W0dn
-          Cx0lVYkmhT/DB2Z95wY9ojL5EUnotwWfsqXSnLm5wzoYrTZcUvQzCw9qGmd4bwzC
-          7ObRdgbzpHYVgKUeXi86/8uDbz56Nn1MBTrQgkH+r8CJJeNGd70obWleft02eQHS
-          /a0NMy+wxpEqnfjpwvuF7tvxsOtVZPncVtjzCoUH7lKMjCg=
-          =/gdd
-          -----END PGP PUBLIC KEY BLOCK-----      
+          ${REG_KEY}
     - path: /etc/containers/registries/20-local-sigserv.yaml
       mode: 0644
       contents:
@@ -287,7 +232,7 @@ storage:
               { "": [{"type":"insecureAcceptAnything"}] },
               "neighbour":
               {
-                "seadog:5000": [
+                "${REG_HOST}:5000": [
                   {
                     "type": "signedBy",
                     "keyType": "GPGKeys",

@@ -1,0 +1,5 @@
+#!/bin/zsh
+config=${CONFIG}
+stream=${STREAM}
+vm_name=${VM_NAME}
+gcloud compute instances create --metadata-from-file "user-data=${config}" --image-project "fedora-coreos-cloud" --image-family "fedora-coreos-${stream}" "${vm_name}"

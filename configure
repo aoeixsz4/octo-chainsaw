@@ -1,0 +1,34 @@
+#!/bin/zsh
+#alias coreos-installer='podman run --pull=always            \
+#                        --rm --tty --interactive            \
+#                        --security-opt label=disable        \
+#                        --volume ${PWD}:/pwd --workdir /pwd \
+#                        quay.io/coreos/coreos-installer:release'
+default_name='sleepysapphic'
+if [ -z "$1" ]; then
+    echo "usage: $0 <vm-name>" >&2
+    echo "using default name $default_name"
+    export VM_NAME=$default_name
+else
+    export VM_NAME=$1
+fi
+export REG_HOST=seadog
+export REG_IP=$(getent hosts $REG_HOST | cut -f 1 -d ' ')
+export SSH_KEY=$(cat ~/.ssh/id_rsa.pub)
+export GPG_KEY=$(gpg -a --export jjadoyle@gmail.com)
+export STREAM='stable'
+export CONFIG="${VM_NAME}.json"
+alias ignition-validate='podman run --rm --tty --interactive \
+                         --security-opt label=disable        \
+                         --volume ${PWD}:/pwd --workdir /pwd \
+                         quay.io/coreos/ignition-validate:release'
+alias fcct='podman run --rm --tty --interactive \
+            --security-opt label=disable        \
+            --volume ${PWD}:/pwd --workdir /pwd \
+            quay.io/coreos/fcct:release'
+envsubst <_${YAML} >${YAML}
+fcct --pretty --strict ${YAML} --output ${CONFIG}
+ignition-validate ${CONFIG} && echo 'Ignition JSON is valid'
+envsubst <_build-znc >build-znc
+envsubst <_run >run
+chmod a+x build-znc run
