@@ -54,6 +54,7 @@ systemd:
         WantedBy=console-login-helper-messages-issuegen.service
     - name: http-sigs.service
       enabled: true
+      contents: |
         [Unit]
         Before=znc.service
         After=network-online.target
@@ -133,14 +134,14 @@ storage:
           long_host=$(getent hosts $ipv4)
           host=$(cat /etc/hostname)
           domain=bc.googleusercontent.com
-          cat >/etc/hosts <<-EOF-
+          cat >/etc/hosts <<- EOF
           127.0.0.1 localhost
           ::1 localhost
           $ipv4 $host ${host}.${domain} $long_host
           10.156.0.20 seadog.${domain} seadog
-          -EOF-
-	- path: /var/lib/znc/.znc/configs/znc.conf
-	  mode: 0600
+          EOF
+    - path: /var/lib/znc/.znc/configs/znc.conf
+      mode: 0600
       contents:
         inline: |
           Version = 1.8.1
@@ -279,7 +280,7 @@ storage:
       contents:
         inline: |
           znc:100000:65536
-    - path: /usr/local/bin/http-sigs.sh
+    - path: /etc/containers/policy.json
       mode: 0755
       contents:
         inline: |
