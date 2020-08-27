@@ -1,3 +1,4 @@
-ARG POD znc
 FROM registry.fedoraproject.org/fedora:latest
-RUN dnf install ${POD} -y
+ARG POD=znc
+ENV POD=$POD
+RUN dnf install $POD -y

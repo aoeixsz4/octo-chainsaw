@@ -1,34 +1,194 @@
-#!/bin/zsh
+#!/usr/bin/env zsh
 #alias coreos-installer='podman run --pull=always            \
 #                        --rm --tty --interactive            \
 #                        --security-opt label=disable        \
 #                        --volume ${PWD}:/pwd --workdir /pwd \
 #                        quay.io/coreos/coreos-installer:release'
-default_name='sleepysapphic'
-if [ -z "$1" ]; then
-    echo "usage: $0 <vm-name>" >&2
-    echo "using default name $default_name"
-    export VM_NAME=$default_name
-else
-    export VM_NAME=$1
+#  independent variables - set defaults here if not specified by
+#  the environment, or override with CLI opts
+usage () {
+    ret=$2
+    cat <<- EOF >&2
+refactor-octo-chainsaw (c) 2020 Joanna Doyle
+this software is not yet licensed and comes with NO WARRANTY
+The purpose is for this script, along with Dockerfile, _build, _run
+and a template YAML file to provision and launch containerised systems
+inside Fedora CoreOS, running on the cloud.
+
+./init-run will also run this plus ./build and ./run.
+If the desired container and the Ignition file are already prepared,
+you can just run ./run.
+
+Usage: $1 [ --ct tag ] [ --fc tag ] [ --gpg key-id ] \\
+            [ --id ssh-id-file ] [ --ign json ] [ -p port ] \\
+            [ --pod name ] [ --reg host ] [ --tls ] [ --yml file ] \\
+            [ instance/vm-name ] 
+
+    --ct  -- sets the tag with which to tag the built container image
+                ENV: CONTAINER_STREAM
+
+    --fc  -- the tag for the FCOS to provision, stable by default
+                ENV: FCOS_STREAM
+
+    --id  -- tells us where to look for public SSH key, in some cases
+            the program will correct if you supply a private key,
+            but please don't, defaults to ~/.ssh/id_rsa.pub 
+                ENV: SSH_ID_FILE
+
+    --ign -- desired name of JSON ignition file to generate with fcct
+            defaults to \$\{VM_NAME\}.json, no ENV override
+
+    --gpg -- the GPG key identity used to sign container images to
+            be pushed to the registry
+                ENV: GPG_KEY_ID
+
+    -p   -- registry port for container images - defaults to 5000
+                ENV: REGISTRY_PORT
+
+    --pod -- name of a program to install during image build stage
+            defaults to znc - this also becomes the name of the
+            container running within FCOS
+                ENV: POD
+
+    --reg -- the hostname of the container registry for publishing
+            the container that FCOS will then fetch during ignition
+            boot. default is 'seadog'
+                ENV: REGISTRY_HOST
+
+    --tls -- pass this if the key-server we're going to use for
+            verification of the docker image is HTTPS capable,
+            default is false.
+                ENV: TLS_CAPABLE
+
+    --yml -- the name of the YAML template file used to configure and
+            provision the FCOS box - if the filename begins with '_',
+            the configure script will run envsubst on _file, then
+            pass the new file to fcct
+                ENV: YAML
+
+    [ instance-or-vm-name ] this will be the hostname and VM or
+    instance name on whatever cloud platform - this build system is
+    currently designed for ZNC container on FCOS running on google
+    cloud compute, but tweaks to the _run script may see it deployed
+    more broadly. Many options are not necessary to touch, but I
+    wanted a set of build scripts that could be potentially used for
+    various other podman on FCOS setups, hence try to make this
+    quite configurable.
+EOF
+    exit $ret
+}
+#
+##fixarg () {
+#    return $($1 | sed -E 's/^--?\w+ +//')
+#}
+
+# try to find a default GPG key
+export gpg_key_id=$(gpg --list-keys --with-colons \
+                        | grep "pub:[u|f|m]:" \
+                        | cut -f5 -d":" | head -n 1) 
+
+# translation of options to env var types
+typeset -A opt_trans
+opt_trans=(--ct CONTAINER_STREAM \
+    --fc FCOS_STREAM \
+    --gpg GPG_KEY_ID \
+    -h HELP \
+    --id SSH_ID_FILE \
+    --ign CONFIG \
+    -p REGISTRY_PORT \
+    --pod POD \
+    --reg REGISTRY_HOST \
+    --tls TLS_CAPABLE \
+    --yml YAML)
+ 
+# prepare defaults
+typeset -A opt_hash
+opt_hash=(--ct ${CONTAINER_STREAM:-testing} \
+   --fc ${FCOS_STREAM:-stable} \
+   --gpg ${GPG_KEY_ID:-$gpg_key_id} \
+   -h "" \
+   --id ${SSH_ID_FILE:-~/.ssh/id_rsa.pub} \
+   --ign "" \
+   -p ${REGISTRY_PORT:-5000} \
+   --pod ${POD:-znc} \
+   --reg ${REGISTRY_HOST:-seadog} \
+   --tls ${TLS_CAPABLE:-""} \
+   --yml ${YAML:-_fcct-containers.yaml})
+    
+# set overrides
+zparseopts -K -D -A opt_hash \
+    -- -ct: -fc: -gpg: h -id: -ign: p: -pod: -reg: -tls -yml:
+
+for i in ${(k)opt_hash}; do
+     export ${opt_trans[$i]}=${opt_hash[$i]}
+done
+
+if [ -n "$HELP" ]; then
+    usage $0 0
 fi
-export REG_HOST=seadog
-export REG_IP=$(getent hosts $REG_HOST | cut -f 1 -d ' ')
-export SSH_KEY=$(cat ~/.ssh/id_rsa.pub)
-export GPG_KEY=$(gpg -a --export jjadoyle@gmail.com)
-export STREAM='stable'
-export CONFIG="${VM_NAME}.json"
+
+if [ -n "$TLS_CAPABLE" ]; then
+    export TLS_CAPABLE='true'
+else
+    export TLS_CAPABLE='false'
+fi
+
+if [[ $# > 1 ]]; then
+    usage $0 1
+elif [[ $# > 0 ]]; then
+    export VM_NAME=$(echo $* | cut -f1 -d' ')
+fi
+
+if [ -z "${GPG_KEY_ID}" ]; then
+    echo "no GPG key id supplied, nor default found"
+    usage $0 1
+fi
+
+if [ ! -e ${SSH_ID_FILE} ] && [ ! -e ${SSH_ID_FILE}.pub ]; then
+    echo "could not locate ssh-keyfile ${SSH_ID_FILE},"
+    echo "nor ${SSH_ID_FILE}.pub"
+    usage $0 1
+fi
+
+file -L ${SSH_ID_FILE} | grep 'private'
+if [[ $? -eq 0 ]]; then
+    echo "could not locate ssh-keyfile ${SSH_ID_FILE},"
+    if [[ $SSH_ID_FILE =~ \.pub$ ]]; then
+        usage $0 1
+    fi
+    export SSH_ID_FILE=${SSH_ID_FILE}.pub
+    echo "trying ${SSH_ID_FILE}"
+    if [ ! -e ${SSH_ID_FILE} ]; then
+        echo "nor ${SSH_ID_FILE}.pub"
+        usage $0 1
+    fi
+fi
+
+# dependent variables
+export REGISTRY_IP=$(getent hosts ${REGISTRY_HOST} | cut -f1 -d' ')
+export SSH_KEY=$(cat ${SSH_ID_FILE})
+export GPG_KEY=$(gpg -a --export ${GPG_KEY_ID})
+export CONFIG=${CONFIG:-${VM_NAME}.json}
+
 alias ignition-validate='podman run --rm --tty --interactive \
                          --security-opt label=disable        \
                          --volume ${PWD}:/pwd --workdir /pwd \
                          quay.io/coreos/ignition-validate:release'
+
 alias fcct='podman run --rm --tty --interactive \
             --security-opt label=disable        \
             --volume ${PWD}:/pwd --workdir /pwd \
             quay.io/coreos/fcct:release'
-envsubst <_${YAML} >${YAML}
+
+# envsubst if we have a yaml starting with underscore
+if [[ ${YAML} =~ ^_ ]]; then
+    export YAML=$(echo ${YAML} | sed -E 's/^_//')
+    envsubst <_${YAML} >${YAML}
+fi
+
+# convert to ignition!!
 fcct --pretty --strict ${YAML} --output ${CONFIG}
-ignition-validate ${CONFIG} && echo 'Ignition JSON is valid'
+ignition-validate ${CONFIG} || echo 'Ignition JSON invalid' >&2
 envsubst <_build-znc >build-znc
 envsubst <_run >run
 chmod a+x build-znc run

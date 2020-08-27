@@ -20,7 +20,7 @@ systemd:
           # Override Execstart in main unit
           ExecStart=
           # Add new Execstart with `-` prefix to ignore failure
-          ExecStart=-/usr/sbin/agetty --autologin core --noclear %I $TERM
+          ExecStart=-/usr/sbin/agetty --autologin core --noclear %I ${TERM:-}
           TTYVTDisallocate=no
     - name: failure.service
       enabled: true
@@ -126,14 +126,14 @@ storage:
         inline: |
           #!/bin/bash
           ipv4=$(curl https://ipv4.icanhazip.com)
-          long_host=$(getent hosts $ipv4)
+          long_host=$(getent hosts ${ipv4:-})
           host=$(cat /etc/hostname)
           domain=bc.googleusercontent.com
           cat >/etc/hosts <<- EOF
           127.0.0.1 localhost
           ::1 localhost
-          $ipv4 $host ${host}.${domain} $long_host
-          ${REG_IP} ${REG_HOST}.${domain} ${REG_HOST}
+          ${ipv4:-} ${host:-} ${host:-}.${domain:-} ${long_host:-}
+          ${REGISTRY_IP} ${REGISTRY_HOST}.${domain:-} ${REGISTRY_HOST}
           EOF
     - path: /var/lib/znc/.znc/configs/znc.conf
       mode: 0600

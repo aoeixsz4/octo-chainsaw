@@ -1,16 +1,12 @@
 #!/bin/zsh
-reg_host=${REG_HOST}
-reg_port=${REG_PORT}
-my_stream=${MY_STREAM}
-if [ -z "$1" ]; then
-    pod=$(echo $1 | cut -d '-' -f 2)
-    if [ pod == "build" ]; then
-        echo no pod chosen to build >&2
-        exit 1
-    fi
-else
-    pod=$1
-fi
-podman build --build-arg POD=${pod} -t ${pod}:${my_stream} .
-podman tag ${pod} ${reg_host}:${reg_port}/${pod}:${my_stream}
-podman push ${pod} --verify-tls=${tls_capable} --sign-by=${key_ident} 
+registry_host=${REGISTRY_HOST}
+registry_port=${REGISTRY_PORT}
+my_stream=${CONTAINER_STREAM}
+key_ident=${GPG_KEY_ID}
+vm_name=${VM_NAME}
+pod=${POD}
+tls_capable=${TLS_CAPABLE}
+
+podman build --build-arg=POD=${pod:-} -t ${pod:-}:${my_stream:-} .
+podman tag ${pod:-} ${registry_host:-}:${registry_port:-}/${pod:-}:${my_stream:-}
+podman push ${pod:-} --tls-verify=${tls_capable:-} --sign-by=${key_ident:-}
