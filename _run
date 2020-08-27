@@ -20,7 +20,7 @@ EOF
     exit ${ret:-}
 }
 
-zparseopts -D -- k=remove -kill=remove h=help -help=help
+zparseopts -D -- k=remove -kill=remove h=help -help=help s=serial
 
 #    n=next -next=next \
 #    r=remove -remove=remove t=testing -test=testing
@@ -42,3 +42,5 @@ if [ -n "${remove:-}" ]; then
 fi
 
 gcloud compute instances create --metadata-from-file "user-data=${config:-}" --image-project "fedora-coreos-cloud" --image-family "fedora-coreos-${stream:-}" "${vm_name:-}"
+
+[ -n "${serial:-}" ] && gcloud compute instances add-metadata ${vm_name:-} --metadata serial-port-enable=TRUE
