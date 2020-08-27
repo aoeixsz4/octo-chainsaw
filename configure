@@ -125,7 +125,7 @@ opt_hash=(--ct ${CONTAINER_STREAM:-testing} \
    --pod ${POD:-znc} \
    --reg ${REGISTRY_HOST:-seadog} \
    --tls ${TLS_CAPABLE:-""} \
-   --yml ${YAML:-_fcct-containers.yaml})
+   --yml "${YAML}")
     
 # set overrides
 zparseopts -K -D -A opt_hash \
@@ -180,9 +180,21 @@ if [[ $? -eq 0 ]]; then
     fi
 fi
 
+if [ -z "${YAML}" ]; then
+    cat <<- EOF >&2
+Please supply a YAML template with \`-yml path\`.
+If the filename begins with _, e.g. _foo.yaml it will be be
+pre-processed with envsubst before passing the resulting
+foo.yaml to fcct to generate the Ignintion JSON configutation file.
+
+
+EOF
+    usage $0 1
+fi
+
 # dependent variables
 export REGISTRY_IP=$(getent hosts ${REGISTRY_HOST} | cut -f1 -d' ')
-export SSH_KEY=$(cat ${SSH_ID_FILE})
+export SSH_PUB_KEY=$(cat ${SSH_ID_FILE})
 #export GPG_KEY=$(gpg -a --export ${GPG_KEY_ID})
 export CONFIG=${CONFIG:-${VM_NAME}.json}
 
