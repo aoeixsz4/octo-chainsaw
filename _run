@@ -11,17 +11,34 @@ this software is not yet licensed and comes with NO WARRANTY
 
 ./configure should normally be called before this. It is also
 rather unlikely you will want to run ./_run - the underscored
-file contains variables such as ${VAR} for envsubst; ${var:-}
+file contains variables such as \$\{VAR\} for envsubst; \$\{var:-\}
 will not be touched.
 
 Execute either as ./run or, if it is necessary to kill an
 already provisioned instance, ./run -k | --kill.
 EOF
-    exit $ret
+    exit ${ret:-}
 }
 
 zparseopts -D -- k=remove -kill=remove h=help -help=help
 
+#    n=next -next=next \
+#    r=remove -remove=remove t=testing -test=testing
+
+# allow CLI vm_name to override envsubst provided
+if [[ $# > 1 ]]; then
+    usage $0 1
+elif [[ $# > 0 ]]; then
+    vm=$(echo $* | cut -f1 -d' ')
+fi
+export vm_name=${vm:-${vm_name:-}}
+
+# if reprovisioning an instance, send gcp command
+# to delete it and also remove the entry from known_hosts
 [ -n "${help:-}" ] && usage $0 1
-[ -n "${remove:-}" ] && gcloud compute instances delete ${vm_name:-}
+if [ -n "${remove:-}" ]; then
+    gcloud compute instances delete ${vm_name:-}
+    ssh-keygen -R ${vm_name:-}
+fi
+
 gcloud compute instances create --metadata-from-file "user-data=${config:-}" --image-project "fedora-coreos-cloud" --image-family "fedora-coreos-${stream:-}" "${vm_name:-}"
