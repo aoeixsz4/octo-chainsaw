@@ -21,21 +21,12 @@ inside Fedora CoreOS, running on the cloud.
 If the desired container and the Ignition file are already prepared,
 you can just run ./run.
 
-Usage: $1 [ --ct tag ] [ --fc tag ] [ --gpg key-id ] \\
-          [ --id ssh-id-file ] [ --ign json ] [ -k keyserv ] \\
-          [ -p port ] [ --pod name ] [ --remote-key path ] \\
-          [ --reg host ] [ --tls ] --yml [_]template.yaml  \\
+Usage: $1 [ --fc tag ] [ --id ssh-id-file ] [ -p port ] \\
+          [ --remote-key path ] --yml [_]template.yaml  \\
           [ instance/vm-name ]
-
-    --ct  -- sets the tag with which to tag the built container image
-                ENV: CONTAINER_STREAM
 
     --fc  -- the tag for the FCOS to provision, stable by default
                 ENV: FCOS_STREAM
-
-    --gpg -- the GPG key identity used to sign container images to
-            be pushed to the registry
-                ENV: GPG_KEY_ID
 
     -h    -- print this message and exit
 
@@ -44,32 +35,8 @@ Usage: $1 [ --ct tag ] [ --fc tag ] [ --gpg key-id ] \\
             but please don't, defaults to ~/.ssh/id_rsa.pub 
                 ENV: SSH_ID_FILE
 
-    --ign -- desired name of JSON ignition file to generate with fcct
-            defaults to \$\{VM_NAME\}.json, no ENV override
-
-    -k    -- keyserver for publishing and retrieving GPG pubkey
-                ENV: KEY_SERVER
-
-    -p    -- registry port for container images - defaults to 5000
-                ENV: REGISTRY_PORT
-
-    --pod -- name of a program to install during image build stage
-            defaults to znc - this also becomes the name of the
-            container running within FCOS
-                ENV: POD
-
-    --reg -- the hostname of the container registry for publishing
-            the container that FCOS will then fetch during ignition
-            boot. default is 'seadog'
-                ENV: REGISTRY_HOST
-
-    --remote-key -- the path to the authorized key on the FCOS
-            system (once built) fully, ENV: REMOTE_KEY_PATH
-
-    --tls -- pass this if the key-server we're going to use for
-            verification of the docker image is HTTPS capable,
-            default is false.
-                ENV: TLS_CAPABLE
+    -p    -- port to forward for container images defaults to 5000
+                ENV: ZNC_PORT
 
     --yml -- the name of the YAML template file used to configure and
             provision the FCOS box - if the filename begins with '_',
@@ -93,46 +60,25 @@ EOF
 #    return $($1 | sed -E 's/^--?\w+ +//')
 #}
 
-# try to find a default GPG key
-export gpg_key_id=$(gpg --list-keys --with-colons \
-                        | grep "pub:[u|f|m]:" \
-                        | cut -f5 -d":" | head -n 1) 
-
 # translation of options to env var types
 typeset -A opt_trans
-opt_trans=(--ct CONTAINER_STREAM \
-    --fc FCOS_STREAM \
-    --gpg GPG_KEY_ID \
+opt_trans=(--fc FCOS_STREAM \
     -h HELP \
     --id SSH_ID_FILE \
-    --ign CONFIG \
-    -k KEY_SERVER \
-    -p REGISTRY_PORT \
-    --pod POD \
-    --reg REGISTRY_HOST \
-    --remote-key REMOTE_KEY_PATH \
-    --tls TLS_CAPABLE \
+    -p ZNC_PORT \
     --yml YAML)
  
 # prepare defaults
 typeset -A opt_hash
-opt_hash=(--ct ${CONTAINER_STREAM:-testing} \
-   --fc ${FCOS_STREAM:-stable} \
-   --gpg "${GPG_KEY_ID:-$gpg_key_id}" \
+opt_hash=(--fc ${FCOS_STREAM:-stable} \
    -h "" \
    --id ${SSH_ID_FILE:-~/.ssh/id_rsa.pub} \
-   --ign "" \
-   -k ${KEY_SERVER:-pool.sks-keyservers.net} \
-   -p ${REGISTRY_PORT:-5000} \
-   --pod ${POD:-znc} \
-   --reg ${REGISTRY_HOST:-seadog} \
-   --tls ${TLS_CAPABLE:-""} \
-   --yml "${YAML}")
+   -p ${ZNC_PORT:-5000} \
+   --yml ${YAML:-_fcct-znc-pod.yaml})
     
 # set overrides
 zparseopts -K -D -A opt_hash \
-    -- -ct: -fc: -gpg: h -id: -ign: k: p: -pod: \
-    -reg: -remote-key: -tls -yml:
+    -- -fc: h -id: p: -yml:
 
 for i in ${(k)opt_hash}; do
      export ${opt_trans[$i]}=${opt_hash[$i]}
@@ -140,12 +86,6 @@ done
 
 if [ -n "$HELP" ]; then
     usage $0 0
-fi
-
-if [ -n "$TLS_CAPABLE" ]; then
-    export TLS_CAPABLE='true'
-else
-    export TLS_CAPABLE='false'
 fi
 
 export VM_NAME=${VM_NAME:-sleepysapphic}
@@ -156,11 +96,6 @@ elif [[ $# > 0 ]]; then
 fi
 # using :+ here is too high risk for clobbering the default
 export VM_NAME=${vm:-$VM_NAME}
-
-if [ -z "${GPG_KEY_ID}" ]; then
-    echo "no GPG key id supplied, nor default found"
-    usage $0 1
-fi
 
 if [ ! -e ${SSH_ID_FILE} ] && [ ! -e ${SSH_ID_FILE}.pub ]; then
     echo "could not locate ssh-keyfile ${SSH_ID_FILE},"
@@ -182,23 +117,21 @@ if [[ $? -eq 0 ]]; then
     fi
 fi
 
-if [ -z "${YAML}" ]; then
-    cat <<- EOF >&2
-Please supply a YAML template with \`-yml path\`.
-If the filename begins with _, e.g. _foo.yaml it will be be
-pre-processed with envsubst before passing the resulting
-foo.yaml to fcct to generate the Ignintion JSON configutation file.
-
-
-EOF
-    usage $0 1
-fi
-
 # dependent variables
-export REGISTRY_IP=$(getent hosts ${REGISTRY_HOST} | cut -f1 -d' ')
+#export REGISTRY_IP=$(getent hosts ${REGISTRY_HOST} | cut -f1 -d' ')
 export SSH_PUB_KEY=$(cat ${SSH_ID_FILE})
 #export GPG_KEY=$(gpg -a --export ${GPG_KEY_ID})
 export CONFIG=${CONFIG:-${VM_NAME}.json}
+name=$(id -u --name)
+export REAL_NAME=$(getent passwd ${name} | cut -f5 -d: | cut -f1 -d,)
+export ZNC_NICK=${name}
+
+# set a password for ZNC
+while [[ -z "${ZNC_PASS}" ]]; do
+    read -rs 'pw?ZNC Password: ' </dev/tty
+    read -rs 'check?Repeat Password: ' </dev/tty
+    [[ "$pw"=="$check" ]] && export ZNC_PASS=$pw
+done
 
 # fix annoying space issue in GPG_KEY
 # ... there really should be a better way to do this
@@ -222,6 +155,5 @@ fi
 # convert to ignition!!
 fcct --pretty --strict ${YAML} --output ${CONFIG}
 ignition-validate ${CONFIG} || echo 'Ignition JSON invalid' >&2
-envsubst <_znc.cfg >znc.cfg
 envsubst <_run >run
-chmod a+x build-znc run
+chmod a+x run

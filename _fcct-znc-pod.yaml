@@ -1,0 +1,87 @@
+variant: fcos
+version: 1.1.0
+passwd:
+  users:
+    - name: core
+      ssh_authorized_keys:
+        - ${SSH_PUB_KEY}
+systemd:
+  units:
+    - name: docker.service
+      mask: true
+    - name: serial-getty@ttyS0.service
+      dropins:
+      - name: autologin-core.conf
+        contents: |
+          [Service]
+          # Override Execstart in main unit
+          ExecStart=
+          # Add new Execstart with `-` prefix to ignore failure
+          ExecStart=-/usr/sbin/agetty --autologin core --noclear %I ${TERM:-}
+          TTYVTDisallocate=no
+    - name: znc.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Run ZNC in a container
+        After=network-online.target
+        Wants=network-online.target
+
+        [Service]
+        User=core
+        ExecStartPre=-/bin/podman kill znc
+        ExecStartPre=-/bin/podman rm znc
+        ExecStartPre=-/bin/podman pull docker.io/library/znc:latest
+        ExecStartPre=/usr/local/bin/znc-init.sh
+        ExecStart=/bin/podman run --publish ${ZNC_PORT}:${ZNC_PORT} \
+                                  --volume znc-cfg:/znc-data:z \
+                                  znc
+        ExecStop=/bin/podman stop znc
+
+        [Install]
+        WantedBy=multi-user.target
+storage:
+  files:
+    - path: /usr/local/bin/znc-init.sh
+      mode: 0755
+      contents:
+        inline: |
+          #!/bin/bash
+          cat /etc/znc-init | /bin/podman run -it --name znc \
+                              --volume znc-cfg:/znc-data:z \
+                              znc --makeconf
+    - path: /etc/znc-init
+      mode: 0644
+      contents:
+        inline: |
+          ${ZNC_PORT}
+          yes
+
+          ${ZNC_NICK}
+          ${ZNC_PASS}
+          ${ZNC_PASS}
+
+          ${ZNC_NICK}_
+
+          ${REAL_NAME}
+
+          no
+          no
+    - path: /etc/hostname
+      mode: 0644
+      contents:
+        inline: |
+          ${VM_NAME}
+    - path: /etc/profile.d/systemd-pager.sh
+      mode: 0644
+      contents:
+        inline: |
+          # Tell systemd to not use a pager when printing information
+          export SYSTEMD_PAGER=cat
+    - path: /etc/sysctl.d/20-silence-audit.conf
+      mode: 0644
+      contents:
+        inline: |
+          # Raise console message logging level from DEBUG (7) to WARNING (4)
+          # to hide audit messages from the interactive console
+          kernel.printk=4
