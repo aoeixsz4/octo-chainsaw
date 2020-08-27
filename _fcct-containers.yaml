@@ -6,10 +6,6 @@ passwd:
       ssh_authorized_keys:
         - ${SSH_KEY}
       groups: [ sudo, docker ]
-    - name: znc
-      uid: 777
-      home_dir: /var/lib/znc
-      system: true
 systemd:
   units:
     - name: serial-getty@ttyS0.service
@@ -70,7 +66,6 @@ systemd:
         Wants=network-online.target
 
         [Service]
-        User=znc
         ExecStartPre=-/bin/podman kill znc
         ExecStartPre=-/bin/podman rm znc
         ExecStartPre=/bin/podman pull --tls-verify=false seadog:5000/znc
@@ -181,16 +176,6 @@ storage:
             ${GPG_KEY_ID} && gpg --export ${GPG_KEY_ID} \
             -o -a ${REMOTE_KEY_PATH}
           python3 -m http.service
-    - path: /etc/subuid
-      mode: 0644
-      contents:
-        inline: |
-          znc:100000:65536
-    - path: /etc/subgid
-      mode: 0644
-      contents:
-        inline: |
-          znc:100000:65536
     - path: /etc/containers/policy.json
       mode: 0755
       contents:
