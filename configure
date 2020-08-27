@@ -11,6 +11,8 @@ usage () {
     cat <<- EOF >&2
 refactor-octo-chainsaw (c) 2020 Joanna Doyle
 this software is not yet licensed and comes with NO WARRANTY
+
+
 The purpose is for this script, along with Dockerfile, _build, _run
 and a template YAML file to provision and launch containerised systems
 inside Fedora CoreOS, running on the cloud.
@@ -22,7 +24,7 @@ you can just run ./run.
 Usage: $1 [ --ct tag ] [ --fc tag ] [ --gpg key-id ] \\
           [ --id ssh-id-file ] [ --ign json ] [ -k keyserv ] \\
           [ -p port ] [ --pod name ] [ --remote-key path ] \\
-          [ --reg host ] [ --tls ] [ --yml file ] \\
+          [ --reg host ] [ --tls ] --yml [_]template.yaml  \\
           [ instance/vm-name ]
 
     --ct  -- sets the tag with which to tag the built container image
