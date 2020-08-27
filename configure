@@ -222,6 +222,6 @@ fi
 # convert to ignition!!
 fcct --pretty --strict ${YAML} --output ${CONFIG}
 ignition-validate ${CONFIG} || echo 'Ignition JSON invalid' >&2
-envsubst <_build-znc >build-znc
+envsubst <_znc.cfg >znc.cfg
 envsubst <_run >run
 chmod a+x build-znc run
