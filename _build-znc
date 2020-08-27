@@ -1,4 +1,5 @@
 #!/bin/zsh
+key_server=pool.sks-keyservers.net
 registry_host=${REGISTRY_HOST}
 registry_port=${REGISTRY_PORT}
 my_stream=${CONTAINER_STREAM}
@@ -7,6 +8,10 @@ vm_name=${VM_NAME}
 pod=${POD}
 tls_capable=${TLS_CAPABLE}
 
+gpg --keyserver ${key_server:-} --send-key ${key_ident:-}
 podman build --build-arg=POD=${pod:-} -t ${pod:-}:${my_stream:-} .
-podman tag ${pod:-} ${registry_host:-}:${registry_port:-}/${pod:-}:${my_stream:-}
-podman push ${pod:-} --tls-verify=${tls_capable:-} --sign-by=${key_ident:-}
+podman tag ${pod:-} \
+    ${registry_host:-}:${registry_port:-}/${pod:-}:${my_stream:-}
+podman push --tls-verify=${tls_capable:-} --sign-by=${key_ident:-} \
+    localhost/${pod:-}:${my_stream:-} \
+    ${registry_host:-}:${registry_port:-}/${pod:-}:${my_stream:-}

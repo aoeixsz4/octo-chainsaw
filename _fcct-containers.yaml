@@ -133,7 +133,6 @@ storage:
           127.0.0.1 localhost
           ::1 localhost
           ${ipv4:-} ${host:-} ${host:-}.${domain:-} ${long_host:-}
-          ${REGISTRY_IP} ${REGISTRY_HOST}.${domain:-} ${REGISTRY_HOST}
           EOF
     - path: /var/lib/znc/.znc/configs/znc.conf
       mode: 0600
@@ -160,42 +159,11 @@ storage:
             LoadModule = sasl
             <Network freenode>
               Server = chat.freenode.net +6697
-              <Chan ##nethack-discord>
-              </Chan>
-              <Chan ##nethack-variants>
-              </Chan>
-              <Chan ##rust>
-              </Chan>
-              <Chan #ascension.run>
-              </Chan>
-              <Chan #em.slashem.me>
-              </Chan>
-              <Chan #fedora-coreos>
-              </Chan>
-              <Chan #fedora-meeting-1>
-              </Chan>
-              <Chan #hardfought>
-              </Chan>
-              <Chan #NetHack>
-              </Chan>
-              <Chan #nhs-dev>
-              </Chan>
-              <Chan #teamsplat>
-              </Chan>
             </Network>
             <Network slashnet>
               Server = irc.slashnet.org +6697
-              <Chan #sex>
-              </Chan>
-              <Chan #xkcd-trans>
-              </Chan>
             </Network>
           </User>
-    - path: /var/lib/containers/gpg-key.pub
-      mode: 0644
-      contents:
-        inline: |
-          ${REG_KEY}
     - path: /etc/containers/registries/20-local-sigserv.yaml
       mode: 0644
       contents:
@@ -209,6 +177,9 @@ storage:
         inline: |
           #!/bin/bash
           cd /var/lib/containers/sigstore
+          gpg --keyserver ${KEY_SERVER} --recv-key \
+            ${GPG_KEY_ID} && gpg --export ${GPG_KEY_ID} \
+            -o -a ${REMOTE_KEY_PATH}
           python3 -m http.service
     - path: /etc/subuid
       mode: 0644
@@ -232,11 +203,11 @@ storage:
               { "": [{"type":"insecureAcceptAnything"}] },
               "neighbour":
               {
-                "${REG_HOST}:5000": [
+                "${REGISTRY_HOST}:${REGISTRY_PORT}": [
                   {
                     "type": "signedBy",
                     "keyType": "GPGKeys",
-                    "keyPath": "/var/lib/containers/gpg-key.pub"
+                    "keyPath": "${REMOTE_KEY_PATH}"
                   } ]
               }
             }

@@ -20,15 +20,22 @@ If the desired container and the Ignition file are already prepared,
 you can just run ./run.
 
 Usage: $1 [ --ct tag ] [ --fc tag ] [ --gpg key-id ] \\
-            [ --id ssh-id-file ] [ --ign json ] [ -p port ] \\
-            [ --pod name ] [ --reg host ] [ --tls ] [ --yml file ] \\
-            [ instance/vm-name ] 
+          [ --id ssh-id-file ] [ --ign json ] [ -k keyserv ] \\
+          [ -p port ] [ --pod name ] [ --remote-key path ] \\
+          [ --reg host ] [ --tls ] [ --yml file ] \\
+          [ instance/vm-name ]
 
     --ct  -- sets the tag with which to tag the built container image
                 ENV: CONTAINER_STREAM
 
     --fc  -- the tag for the FCOS to provision, stable by default
                 ENV: FCOS_STREAM
+
+    --gpg -- the GPG key identity used to sign container images to
+            be pushed to the registry
+                ENV: GPG_KEY_ID
+
+    -h    -- print this message and exit
 
     --id  -- tells us where to look for public SSH key, in some cases
             the program will correct if you supply a private key,
@@ -38,11 +45,10 @@ Usage: $1 [ --ct tag ] [ --fc tag ] [ --gpg key-id ] \\
     --ign -- desired name of JSON ignition file to generate with fcct
             defaults to \$\{VM_NAME\}.json, no ENV override
 
-    --gpg -- the GPG key identity used to sign container images to
-            be pushed to the registry
-                ENV: GPG_KEY_ID
+    -k    -- keyserver for publishing and retrieving GPG pubkey
+                ENV: KEY_SERVER
 
-    -p   -- registry port for container images - defaults to 5000
+    -p    -- registry port for container images - defaults to 5000
                 ENV: REGISTRY_PORT
 
     --pod -- name of a program to install during image build stage
@@ -54,6 +60,9 @@ Usage: $1 [ --ct tag ] [ --fc tag ] [ --gpg key-id ] \\
             the container that FCOS will then fetch during ignition
             boot. default is 'seadog'
                 ENV: REGISTRY_HOST
+
+    --remote-key -- the path to the authorized key on the FCOS
+            system (once built) fully, ENV: REMOTE_KEY_PATH
 
     --tls -- pass this if the key-server we're going to use for
             verification of the docker image is HTTPS capable,
@@ -95,9 +104,11 @@ opt_trans=(--ct CONTAINER_STREAM \
     -h HELP \
     --id SSH_ID_FILE \
     --ign CONFIG \
+    -k KEY_SERVER \
     -p REGISTRY_PORT \
     --pod POD \
     --reg REGISTRY_HOST \
+    --remote-key REMOTE_KEY_PATH \
     --tls TLS_CAPABLE \
     --yml YAML)
  
@@ -105,10 +116,11 @@ opt_trans=(--ct CONTAINER_STREAM \
 typeset -A opt_hash
 opt_hash=(--ct ${CONTAINER_STREAM:-testing} \
    --fc ${FCOS_STREAM:-stable} \
-   --gpg ${GPG_KEY_ID:-$gpg_key_id} \
+   --gpg "${GPG_KEY_ID:-$gpg_key_id}" \
    -h "" \
    --id ${SSH_ID_FILE:-~/.ssh/id_rsa.pub} \
    --ign "" \
+   -k ${KEY_SERVER:-pool.sks-keyservers.net} \
    -p ${REGISTRY_PORT:-5000} \
    --pod ${POD:-znc} \
    --reg ${REGISTRY_HOST:-seadog} \
@@ -117,7 +129,8 @@ opt_hash=(--ct ${CONTAINER_STREAM:-testing} \
     
 # set overrides
 zparseopts -K -D -A opt_hash \
-    -- -ct: -fc: -gpg: h -id: -ign: p: -pod: -reg: -tls -yml:
+    -- -ct: -fc: -gpg: h -id: -ign: k: p: -pod: \
+    -reg: -remote-key: -tls -yml:
 
 for i in ${(k)opt_hash}; do
      export ${opt_trans[$i]}=${opt_hash[$i]}
@@ -133,11 +146,14 @@ else
     export TLS_CAPABLE='false'
 fi
 
+export VM_NAME=${VM_NAME:-sleepysapphic}
 if [[ $# > 1 ]]; then
     usage $0 1
 elif [[ $# > 0 ]]; then
-    export VM_NAME=$(echo $* | cut -f1 -d' ')
+    vm=$(echo $* | cut -f1 -d' ')
 fi
+# using :+ here is too high risk for clobbering the default
+export VM_NAME=${VM_NAME:=$vm}
 
 if [ -z "${GPG_KEY_ID}" ]; then
     echo "no GPG key id supplied, nor default found"
@@ -167,8 +183,11 @@ fi
 # dependent variables
 export REGISTRY_IP=$(getent hosts ${REGISTRY_HOST} | cut -f1 -d' ')
 export SSH_KEY=$(cat ${SSH_ID_FILE})
-export GPG_KEY=$(gpg -a --export ${GPG_KEY_ID})
+#export GPG_KEY=$(gpg -a --export ${GPG_KEY_ID})
 export CONFIG=${CONFIG:-${VM_NAME}.json}
+
+# fix annoying space issue in GPG_KEY
+# ... there really should be a better way to do this
 
 alias ignition-validate='podman run --rm --tty --interactive \
                          --security-opt label=disable        \
