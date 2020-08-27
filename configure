@@ -153,7 +153,7 @@ elif [[ $# > 0 ]]; then
     vm=$(echo $* | cut -f1 -d' ')
 fi
 # using :+ here is too high risk for clobbering the default
-export VM_NAME=${VM_NAME:=$vm}
+export VM_NAME=${vm:-$VM_NAME}
 
 if [ -z "${GPG_KEY_ID}" ]; then
     echo "no GPG key id supplied, nor default found"
