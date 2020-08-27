@@ -8,16 +8,6 @@ passwd:
       groups: [ sudo, docker ]
 systemd:
   units:
-    - name: serial-getty@ttyS0.service
-      dropins:
-      - name: autologin-core.conf
-        contents: |
-          [Service]
-          # Override Execstart in main unit
-          ExecStart=
-          # Add new Execstart with `-` prefix to ignore failure
-          ExecStart=-/usr/sbin/agetty --autologin core --noclear %I ${TERM:-}
-          TTYVTDisallocate=no
     - name: failure.service
       enabled: true
       contents: |
