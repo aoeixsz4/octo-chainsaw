@@ -21,9 +21,8 @@ inside Fedora CoreOS, running on the cloud.
 If the desired container and the Ignition file are already prepared,
 you can just run ./run.
 
-Usage: $1 [ --fc tag ] [ --id ssh-id-file ] [ -p port ] \\
-          [ --remote-key path ] --yml [_]template.yaml  \\
-          [ instance/vm-name ]
+Usage: $1 [ --fc tag ] [ -h] [ --id ssh-id-file ] [ -p port ] \\
+          --yml [_]template.yaml [ instance/vm-name ]
 
     --fc  -- the tag for the FCOS to provision, stable by default
                 ENV: FCOS_STREAM
