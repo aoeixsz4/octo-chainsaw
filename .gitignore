@@ -1,5 +1,6 @@
-/fcct-containers.yaml
-*.json
+/*.yaml
+/*.json
 /run
-/build-znc
 /build
+/build-*
+!_*.yaml
