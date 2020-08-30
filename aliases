@@ -1,4 +1,5 @@
-alias gserial-conn=gcloud compute connect-to-serial-port
-alias gserial-cat=gcloud compute instances get-serial-port-output
-alias gcomp-ls=gcloud compute instances list
-alias gcomp-kill=gcloud compute instances delete
+alias gserial-conn='gcloud compute connect-to-serial-port'
+alias gserial-cat='gcloud compute instances get-serial-port-output'
+alias gcomp-ls='gcloud compute instances list'
+alias gcomp-kill='gcloud compute instances delete'
+alias gserial-on='gcloud compute instances add-metadata $1 --metadata serial-port-enable=TRUE'
