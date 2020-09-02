@@ -1,0 +1,15 @@
+systemd:
+  units:
+  - name: enable-cgroups-v2.service
+    enabled: true
+    contents: |
+      [Unit]
+      Description=Enable cgroups v2 (systemd.unified_cgroup_hierarchy)
+      ConditionFirstBoot=true
+      After=ignition-complete.target
+      Before=default.target
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/bin/rpm-ostree kargs --replace systemd.unified_cgroup_hierarchy=1 --reboot
+      [Install]
+      WantedBy=basic.target
